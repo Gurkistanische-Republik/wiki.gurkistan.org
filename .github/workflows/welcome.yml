@@ -1,0 +1,53 @@
+name: "Gurkipedia Bot: Welcome Comment"
+
+on:
+  pull_request:
+    types:
+      - opened
+
+permissions:
+  pull-requests: write
+
+jobs:
+  welcome-message:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Post Welcome Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `
+            <table>
+              <tr>
+                <td>
+                  <svg width="40" height="40" viewBox="0 0 32 32">
+                    <rect width="32" height="32" rx="6" fill="#16697a"></rect>
+                    <polygon points="0,32 0,12 20,32" fill="#ede134"></polygon>
+                    <path d="M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z" fill="#ffffff" opacity="0.9"></path>
+                    <path d="M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z" fill="#ffffff" opacity="0.75"></path>
+                  </svg>
+                </td>
+                <td>
+                  <strong>Vielen Dank für deinen Beitrag zu Gurkipedia!</strong>
+                </td>
+              </tr>
+            </table>
+
+            Hallo @${context.payload.pull_request.user.login},
+
+            wir freuen uns über deine Unterstützung! Ein Maintainer wird sich deinen Pull Request bald ansehen. 
+
+            In der Zwischenzeit läuft unsere automatisierte Qualitätsprüfung über den Code. Bitte wirf ab und zu einen Blick auf die Status-Checks am Ende dieser Seite, um eventuelle Fehler direkt zu beheben.
+
+            ---
+            *Dies ist eine automatisierte Nachricht von **Gurkipedia Bot**.*
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message.trim()
+            });
