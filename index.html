@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gurkipedia</title>
+    <!-- Gurkistan Flaggen-Wiki Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2316697a'/><polygon points='0,32 0,12 20,32' fill='%23ede134'/><path d='M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z' fill='%23ffffff' opacity='0.9'/><path d='M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z' fill='%23ffffff' opacity='0.75'/></svg>">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <header class="header">
+        <a href="./" class="brand">
+            <svg viewBox="0 0 32 32">
+                <rect width="32" height="32" rx="6" fill="#16697a"/>
+                <polygon points="0,32 0,12 20,32" fill="#ede134"/>
+                <path d="M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z" fill="#ffffff" opacity="0.9"/>
+                <path d="M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z" fill="#ffffff" opacity="0.75"/>
+            </svg>
+            Gurkipedia
+        </a>
+        <div class="search-box">
+            <input type="text" id="globalSearch" placeholder="Artikel suchen...">
+            <button onclick="handleSearch()">Suchen</button>
+        </div>
+    </header>
+
+    <div class="layout">
+        <aside class="sidebar-left">
+            <a href="#" onclick="promptNewArticle(); return false;" class="action-link">
+                <svg class="svg-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Neuen Artikel erstellen
+            </a>
+        </aside>
+
+        <main class="main-content">
+            <h1>Alle Artikel</h1>
+            <p>Willkommen bei Gurkipedia. Hier sind alle aktuell existierenden Artikel:</p>
+            
+            <ul id="articleList" class="article-list">
+                <li>Lade Artikel...</li>
+            </ul>
+        </main>
+    </div>
+
+    <script type="module">
+        import { db, collection, getDocs } from "./js/firebase-init.js";
+
+        async function loadArticles() {
+            const list = document.getElementById('articleList');
+            try {
+                const snap = await getDocs(collection(db, "pages"));
+                list.innerHTML = "";
+                
+                if (snap.empty) {
+                    list.innerHTML = "<li>Noch keine Artikel vorhanden. Erstelle den ersten!</li>";
+                    return;
+                }
+
+                snap.forEach(docSnap => {
+                    const id = docSnap.id;
+                    const title = docSnap.data().title || id;
+                    list.innerHTML += `<li><a href="./article/?id=${id}">${title}</a></li>`;
+                });
+            } catch (err) {
+                list.innerHTML = "<li style='color:red;'>Fehler beim Laden der Artikel. Prüfe die Firestore Regeln!</li>";
+            }
+        }
+
+        window.handleSearch = () => {
+            const val = document.getElementById('globalSearch').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+            if (val) window.location.href = `./article/?id=${val}`;
+        };
+
+        window.promptNewArticle = () => {
+            const name = prompt("Name des neuen Artikels:");
+            if (name) {
+                const slug = name.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+                window.location.href = `./edit/?id=${slug}`;
+            }
+        };
+
+        document.getElementById('globalSearch').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSearch();
+        });
+
+        loadArticles();
+    </script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Versionsverlauf - Gurkipedia</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2316697a'/><polygon points='0,32 0,12 20,32' fill='%23ede134'/><path d='M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z' fill='%23ffffff' opacity='0.9'/><path d='M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z' fill='%23ffffff' opacity='0.75'/></svg>">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+    <header class="header">
+        <a href="../" class="brand">
+            <svg viewBox="0 0 32 32">
+                <rect width="32" height="32" rx="6" fill="#16697a"/>
+                <polygon points="0,32 0,12 20,32" fill="#ede134"/>
+                <path d="M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z" fill="#ffffff" opacity="0.9"/>
+                <path d="M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z" fill="#ffffff" opacity="0.75"/>
+            </svg>
+            Gurkipedia
+        </a>
+        <div class="search-box">
+            <input type="text" id="globalSearch" placeholder="Artikel suchen...">
+            <button onclick="handleSearch()">Suchen</button>
+        </div>
+    </header>
+
+    <div class="layout">
+        <aside class="sidebar-left">
+            <a href="#" onclick="promptNewArticle(); return false;" class="action-link">
+                <svg class="svg-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Neuen Artikel erstellen
+            </a>
+        </aside>
+
+        <main class="main-content">
+            <h1>Versionsverlauf: <span id="histTitle"></span></h1>
+            <a id="backBtn" href="#" class="btn btn-secondary" style="margin-bottom: 20px;">
+                <svg class="svg-icon" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                Zurück zum Artikel
+            </a>
+            
+            <div id="historyList">Lade...</div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { db, collection, getDocs, query, orderBy } from "../js/firebase-init.js";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const articleId = urlParams.get('id');
+
+        if(!articleId) window.location.href = "../";
+
+        document.getElementById('histTitle').innerText = articleId;
+        document.getElementById('backBtn').href = `../article/?id=${articleId}`;
+
+        async function loadHistory() {
+            const list = document.getElementById('historyList');
+            const q = query(collection(db, "pages", articleId, "history"), orderBy("timestamp", "desc"));
+            const snap = await getDocs(q);
+
+            list.innerHTML = "";
+            if (snap.empty) {
+                list.innerHTML = "<p>Keine Versionen vorhanden.</p>";
+                return;
+            }
+
+            snap.forEach(docSnap => {
+                const data = docSnap.data();
+                const dateStr = data.timestamp ? data.timestamp.toDate().toLocaleString('de-DE') : "Unbekannt";
+                list.innerHTML += `
+                    <div class="history-item">
+                        <span class="history-date">${dateStr}</span>
+                        <div>${data.content.substring(0, 120).replace(/</g, "&lt;")}...</div>
+                    </div>
+                `;
+            });
+        }
+
+        window.handleSearch = () => {
+            const val = document.getElementById('globalSearch').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+            if (val) window.location.href = `../article/?id=${val}`;
+        };
+
+        window.promptNewArticle = () => {
+            const name = prompt("Name des neuen Artikels:");
+            if (name) {
+                const slug = name.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+                window.location.href = `../edit/?id=${slug}`;
+            }
+        };
+
+        document.getElementById('globalSearch').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSearch();
+        });
+
+        loadHistory();
+    </script>
+</body>
+</html>
