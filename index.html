@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gurkipedia</title>
-    <!-- Gurkistan Flaggen-Wiki Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2316697a'/><polygon points='0,32 0,12 20,32' fill='%23ede134'/><path d='M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z' fill='%23ffffff' opacity='0.9'/><path d='M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z' fill='%23ffffff' opacity='0.75'/></svg>">
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -44,6 +43,12 @@
         </main>
     </div>
 
+    <footer class="footer">
+        <span>Impressum: <a href="https://alexgaming.is-a.dev/impressum" target="_blank">alexgaming.is-a.dev/impressum</a></span>
+        <span>•</span>
+        <span>Datenschutz: <a href="https://alexgaming.is-a.dev/datenschutz" target="_blank">alexgaming.is-a.dev/datenschutz</a></span>
+    </footer>
+
     <script type="module">
         import { db, collection, getDocs } from "./js/firebase-init.js";
 
@@ -64,7 +69,7 @@
                     list.innerHTML += `<li><a href="./article/?id=${id}">${title}</a></li>`;
                 });
             } catch (err) {
-                list.innerHTML = "<li style='color:red;'>Fehler beim Laden der Artikel. Prüfe die Firestore Regeln!</li>";
+                list.innerHTML = "<li style='color:red;'>Fehler beim Laden der Artikel. Prüfe die Firestore-Regeln!</li>";
             }
         }
 

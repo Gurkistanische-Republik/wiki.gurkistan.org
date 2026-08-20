@@ -6,6 +6,7 @@
     <title>Artikel - Gurkipedia</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2316697a'/><polygon points='0,32 0,12 20,32' fill='%23ede134'/><path d='M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z' fill='%23ffffff' opacity='0.9'/><path d='M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z' fill='%23ffffff' opacity='0.75'/></svg>">
     <link rel="stylesheet" href="../css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 
@@ -25,7 +26,7 @@
         </div>
     </header>
 
-    <div class="layout">
+    <div class="article-layout">
         <aside class="sidebar-left">
             <a href="#" onclick="promptNewArticle(); return false;" class="action-link">
                 <svg class="svg-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -52,7 +53,33 @@
                 </button>
             </div>
         </main>
+
+        <aside class="knowledge-panel" id="knowledgePanel" style="display: none;">
+            <h3 id="kpTitle">Überblick</h3>
+            <img id="kpImage" class="kp-image" src="" alt="" style="display: none;">
+            
+            <div class="kp-section" id="kpDefinitionSection" style="display: none;">
+                <strong>Definition / Info</strong>
+                <p id="kpDefinition" style="margin: 0;"></p>
+            </div>
+
+            <div class="kp-section" id="kpSourcesSection" style="display: none;">
+                <strong>Quellen</strong>
+                <ul class="kp-list" id="kpSourcesList"></ul>
+            </div>
+
+            <div class="kp-section" id="kpLinksSection" style="display: none;">
+                <strong>Links</strong>
+                <ul class="kp-list" id="kpLinksList"></ul>
+            </div>
+        </aside>
     </div>
+
+    <footer class="footer">
+        <span>Impressum: <a href="https://alexgaming.is-a.dev/impressum" target="_blank">alexgaming.is-a.dev/impressum</a></span>
+        <span>•</span>
+        <span>Datenschutz: <a href="https://alexgaming.is-a.dev/datenschutz" target="_blank">alexgaming.is-a.dev/datenschutz</a></span>
+    </footer>
 
     <script type="module">
         import { db, doc, getDoc, deleteDoc } from "../js/firebase-init.js";
@@ -64,16 +91,73 @@
         document.getElementById('historyBtn').href = `../history/?id=${articleId}`;
 
         async function loadArticle() {
-            const displayTitle = articleId.charAt(0).toUpperCase() + articleId.slice(1).replace(/-/g, ' ');
-            document.getElementById('title').innerText = displayTitle;
-            document.title = `${displayTitle} - Gurkipedia`;
-
             const snap = await getDoc(doc(db, "pages", articleId));
 
             if (snap.exists()) {
-                document.getElementById('content').innerText = snap.data().content;
+                const data = snap.data();
+                const displayTitle = data.title || articleId;
+                document.getElementById('title').innerText = displayTitle;
+                document.title = `${displayTitle} - Gurkipedia`;
+
+                document.getElementById('content').innerHTML = marked.parse(data.content || "");
                 document.getElementById('deleteBtn').style.display = "inline-flex";
+
+                let hasPanelContent = false;
+                const kp = document.getElementById('knowledgePanel');
+                document.getElementById('kpTitle').innerText = displayTitle;
+
+                if (data.imageBase64) {
+                    document.getElementById('kpImage').src = data.imageBase64;
+                    document.getElementById('kpImage').style.display = "block";
+                    hasPanelContent = true;
+                }
+
+                if (data.definition) {
+                    document.getElementById('kpDefinition').innerText = data.definition;
+                    document.getElementById('kpDefinitionSection').style.display = "block";
+                    hasPanelContent = true;
+                }
+
+                if (data.sources) {
+                    const sourcesList = document.getElementById('kpSourcesList');
+                    sourcesList.innerHTML = "";
+                    data.sources.split('\n').filter(s => s.trim()).forEach(src => {
+                        const parts = src.split('|');
+                        if (parts.length >= 2) {
+                            const url = parts[0].trim();
+                            const label = parts[1].trim();
+                            sourcesList.innerHTML += `<li><a href="${url}" target="_blank">${label}</a></li>`;
+                        } else {
+                            sourcesList.innerHTML += `<li>${src.trim()}</li>`;
+                        }
+                    });
+                    if(data.sources.trim()) {
+                        document.getElementById('kpSourcesSection').style.display = "block";
+                        hasPanelContent = true;
+                    }
+                }
+
+                if (data.links) {
+                    const linksList = document.getElementById('kpLinksList');
+                    linksList.innerHTML = "";
+                    data.links.split('\n').filter(l => l.trim()).forEach(link => {
+                        const parts = link.split('|');
+                        const url = parts[0] ? parts[0].trim() : '#';
+                        const label = parts[1] ? parts[1].trim() : url;
+                        linksList.innerHTML += `<li><a href="${url}" target="_blank">${label}</a></li>`;
+                    });
+                    if(data.links.trim()) {
+                        document.getElementById('kpLinksSection').style.display = "block";
+                        hasPanelContent = true;
+                    }
+                }
+
+                if (hasPanelContent) {
+                    kp.style.display = "block";
+                }
+
             } else {
+                document.getElementById('title').innerText = articleId;
                 document.getElementById('content').innerHTML = "<i>Dieser Artikel existiert noch nicht. Du kannst ihn über 'Bearbeiten' anlegen!</i>";
             }
         }

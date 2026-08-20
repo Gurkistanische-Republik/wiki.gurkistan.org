@@ -2,6 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bearbeiten - Gurkipedia</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2316697a'/><polygon points='0,32 0,12 20,32' fill='%23ede134'/><path d='M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z' fill='%23ffffff' opacity='0.9'/><path d='M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z' fill='%23ffffff' opacity='0.75'/></svg>">
     <link rel="stylesheet" href="../css/style.css">
@@ -24,27 +25,86 @@
         </div>
     </header>
 
-    <div class="layout">
+    <div class="article-layout">
         <aside class="sidebar-left">
             <a href="#" onclick="promptNewArticle(); return false;" class="action-link">
                 <svg class="svg-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 Neuen Artikel erstellen
             </a>
+            <a id="cancelBtn" href="#" class="action-link" style="margin-top: 10px; border: none; color: #666;">
+                <svg class="svg-icon" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                Abbrechen
+            </a>
         </aside>
 
+        <!-- Haupt-Inhalt (Mitte) -->
         <main class="main-content">
-            <h1>Bearbeiten: <span id="editTitle"></span></h1>
-            <textarea id="editor" placeholder="Schreibe den Inhalt hier hinein..."></textarea>
+            <h1>Artikel bearbeiten</h1>
             
-            <div class="toolbar" style="border:none; padding-top:0; margin-top:0;">
-                <button id="saveBtn">
+            <div style="margin-bottom: 15px;">
+                <label class="form-label" for="editorTitleInput">Artikel-Name (Titel)</label>
+                <input type="text" id="editorTitleInput" class="form-control" placeholder="Name des Artikels...">
+            </div>
+
+            <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <label class="form-label" for="editorContent" style="margin: 0;">Haupt-Wiki-Inhalt (Markdown unterstützt)</label>
+                <label class="btn btn-secondary" style="cursor: pointer; font-size: 0.85rem; padding: 5px 12px; margin: 0;">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    Bild in Text einfügen
+                    <input type="file" id="inlineImageInput" accept="image/*" style="display: none;">
+                </label>
+            </div>
+
+            <textarea id="editorContent" style="height: 280px; width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit; font-size: 1.05rem; line-height: 1.6;" placeholder="Schreibe den Markdown-Text hier hinein..."></textarea>
+
+            <!-- Visuelle Bildervorschau im Editor statt reiner URL -->
+            <div style="margin-top: 15px;">
+                <label class="form-label">Im Artikel verwendete Bilder (Vorschau)</label>
+                <div id="editorImageGallery" class="editor-image-preview-container">
+                    <span style="color: #888; font-size: 0.9rem; font-style: italic;">Noch keine Bilder im Text eingefügt.</span>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <button id="saveBtn" class="btn">
                     <svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                    Speichern
+                    Änderungen speichern
                 </button>
-                <a id="cancelBtn" href="#" class="btn btn-secondary">Abbrechen</a>
             </div>
         </main>
+
+        <!-- Knowledge Panel Editor (Rechte Spalte) -->
+        <aside class="knowledge-panel">
+            <h3>Knowledge Panel</h3>
+            
+            <div class="kp-section">
+                <label for="editorImage">Panel-Bild Upload</label>
+                <input type="file" id="editorImage" accept="image/*">
+                <img id="imagePreview" class="kp-image" style="display:none; margin-top: 8px;" alt="Vorschau">
+            </div>
+
+            <div class="kp-section">
+                <label for="editorDefinition">Definition / Kurzinfo</label>
+                <textarea id="editorDefinition" placeholder="Kurze Beschreibung..."></textarea>
+            </div>
+
+            <div class="kp-section">
+                <label for="editorSources">Quellen (URL | Name oder Text)</label>
+                <textarea id="editorSources" placeholder="https://archiv.de | Staatsarchiv&#10;Offizielles Dokument"></textarea>
+            </div>
+
+            <div class="kp-section">
+                <label for="editorLinks">Links (URL | Name)</label>
+                <textarea id="editorLinks" placeholder="https://beispiel.de | Offizielle Website"></textarea>
+            </div>
+        </aside>
     </div>
+
+    <footer class="footer">
+        <span>Impressum: <a href="https://alexgaming.is-a.dev/impressum" target="_blank">alexgaming.is-a.dev/impressum</a></span>
+        <span>•</span>
+        <span>Datenschutz: <a href="https://alexgaming.is-a.dev/datenschutz" target="_blank">alexgaming.is-a.dev/datenschutz</a></span>
+    </footer>
 
     <script type="module">
         import { db, doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from "../js/firebase-init.js";
@@ -54,22 +114,118 @@
 
         if(!articleId) window.location.href = "../";
 
-        document.getElementById('editTitle').innerText = articleId;
         document.getElementById('cancelBtn').href = `../article/?id=${articleId}`;
+
+        let base64Image = "";
+
+        // Funktion zur Aktualisierung der visuellen Bildervorschau im Editor
+        function updateEditorImageGallery() {
+            const content = document.getElementById('editorContent').value;
+            const gallery = document.getElementById('editorImageGallery');
+            
+            // Regex zum Finden von Markdown-Bildern ![alt](url)
+            const imgRegex = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/g;
+            let matches = [...content.matchAll(imgRegex)];
+
+            gallery.innerHTML = "";
+            if (matches.length === 0) {
+                gallery.innerHTML = '<span style="color: #888; font-size: 0.9rem; font-style: italic;">Noch keine Bilder im Text eingefügt.</span>';
+                return;
+            }
+
+            matches.forEach((match, index) => {
+                const altText = match[1] || `Bild ${index + 1}`;
+                const imgSrc = match[2];
+                gallery.innerHTML += `
+                    <div class="editor-thumb-item" title="${altText}">
+                        <img src="${imgSrc}" alt="${altText}">
+                    </div>
+                `;
+            });
+        }
+
+        document.getElementById('editorContent').addEventListener('input', updateEditorImageGallery);
+
+        // Panel-Bild Upload
+        document.getElementById('editorImage').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    base64Image = event.target.result;
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = base64Image;
+                    preview.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Inline Bild in Text-Editor an Cursor-Position einfügen
+        document.getElementById('inlineImageInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const base64 = event.target.result;
+                    const textarea = document.getElementById('editorContent');
+                    const imgMarkdown = `\n![Bild](${base64})\n`;
+                    
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    const text = textarea.value;
+                    
+                    textarea.value = text.substring(0, start) + imgMarkdown + text.substring(end);
+                    textarea.selectionStart = textarea.selectionEnd = start + imgMarkdown.length;
+                    textarea.focus();
+                    
+                    updateEditorImageGallery();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
 
         async function loadContent() {
             const snap = await getDoc(doc(db, "pages", articleId));
-            if (snap.exists()) document.getElementById('editor').value = snap.data().content;
+            if (snap.exists()) {
+                const data = snap.data();
+                document.getElementById('editorTitleInput').value = data.title || articleId;
+                document.getElementById('editorDefinition').value = data.definition || "";
+                document.getElementById('editorContent').value = data.content || "";
+                document.getElementById('editorSources').value = data.sources || "";
+                document.getElementById('editorLinks').value = data.links || "";
+                
+                if (data.imageBase64) {
+                    base64Image = data.imageBase64;
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = base64Image;
+                    preview.style.display = "block";
+                }
+                updateEditorImageGallery();
+            } else {
+                document.getElementById('editorTitleInput').value = articleId.charAt(0).toUpperCase() + articleId.slice(1).replace(/-/g, ' ');
+            }
         }
 
         document.getElementById('saveBtn').addEventListener('click', async () => {
-            const content = document.getElementById('editor').value.trim();
-            if (!content) return alert("Der Text darf nicht leer sein!");
+            const content = document.getElementById('editorContent').value.trim();
+            const title = document.getElementById('editorTitleInput').value.trim();
+            if (!content) return alert("Der Hauptinhalt darf nicht leer sein!");
+            if (!title) return alert("Der Titel darf nicht leer sein!");
 
             const btn = document.getElementById('saveBtn');
             btn.innerHTML = `Speichert...`;
 
-            await setDoc(doc(db, "pages", articleId), { title: articleId, content: content }, { merge: true });
+            const payload = {
+                title: title,
+                definition: document.getElementById('editorDefinition').value.trim(),
+                content: content,
+                sources: document.getElementById('editorSources').value.trim(),
+                links: document.getElementById('editorLinks').value.trim(),
+                imageBase64: base64Image
+            };
+
+            await setDoc(doc(db, "pages", articleId), payload, { merge: true });
             await addDoc(collection(db, "pages", articleId, "history"), { content: content, timestamp: serverTimestamp() });
 
             window.location.href = `../article/?id=${articleId}`;
