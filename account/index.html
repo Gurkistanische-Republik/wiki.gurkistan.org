@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konto verwalten - Gurkistan Wiki</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2316697a'/><polygon points='0,32 0,12 20,32' fill='%23ede134'/><path d='M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z' fill='%23ffffff' opacity='0.9'/><path d='M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z' fill='%23ffffff' opacity='0.75'/></svg>">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+    <header class="header">
+        <a href="../" class="brand">
+            <svg viewBox="0 0 32 32">
+                <rect width="32" height="32" rx="6" fill="#16697a"/>
+                <polygon points="0,32 0,12 20,32" fill="#ede134"/>
+                <path d="M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z" fill="#ffffff" opacity="0.9"/>
+                <path d="M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z" fill="#ffffff" opacity="0.75"/>
+            </svg>
+            Gurkistan Wiki
+        </a>
+        <div class="search-box">
+            <input type="text" id="globalSearch" placeholder="Artikel suchen...">
+            <button onclick="handleSearch()">Suchen</button>
+        </div>
+    </header>
+
+    <div class="layout" style="justify-content: center;">
+        <main class="main-content" style="max-width: 550px; width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h1>Konto-Einstellungen</h1>
+                <button id="logoutBtn" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;">Abmelden</button>
+            </div>
+            
+            <div id="accountStatus" style="background: var(--bg-secondary, #f5f5f5); padding: 15px; border-radius: 6px; margin-bottom: 20px; font-size: 0.95rem; border: 1px solid var(--border);">
+                Angemeldete E-Mail: <strong id="userEmailDisplay">Lade...</strong><br>
+                Status E-Mail-Verifizierung: <strong id="verifiedDisplay">...</strong><br>
+                Hauptanbieter: <strong id="primaryProviderDisplay">...</strong>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+            <h3>Verknüpfte Anmeldemöglichkeiten</h3>
+            <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">Du kannst Google, GitHub und E-Mail/Passwort parallel nutzen.</p>
+            
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 1px solid var(--border); border-radius: 4px;">
+                    <span><strong>Google-Konto:</strong> <span id="googleStatus">Nicht verknüpft</span></span>
+                    <button id="toggleGoogleBtn" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.85rem;">Verknüpfen</button>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 1px solid var(--border); border-radius: 4px;">
+                    <span><strong>GitHub-Konto:</strong> <span id="githubStatus">Nicht verknüpft</span></span>
+                    <button id="toggleGithubBtn" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.85rem;">Verknüpfen</button>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 1px solid var(--border); border-radius: 4px;">
+                    <span><strong>E-Mail & Passwort:</strong> <span id="passwordStatus">Aktiv</span></span>
+                </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+            <h3>E-Mail-Adresse ändern</h3>
+            <div style="margin-bottom: 15px;">
+                <label class="form-label" for="newEmailInput">Neue E-Mail-Adresse</label>
+                <input type="email" id="newEmailInput" class="form-control" placeholder="neue@example.com">
+                <button id="updateEmailBtn" class="btn btn-secondary" style="margin-top: 8px;">E-Mail-Änderung anfordern</button>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+            <h3>Passwort ändern</h3>
+            <div style="margin-bottom: 15px;">
+                <label class="form-label" for="newPasswordInput">Neues Passwort</label>
+                <input type="password" id="newPasswordInput" class="form-control" placeholder="Neues Passwort (min. 6 Zeichen)">
+                <button id="updatePasswordBtn" class="btn btn-secondary" style="margin-top: 8px;">Passwort aktualisieren</button>
+            </div>
+
+            <div style="margin-top: 30px;">
+                <a href="../" class="btn btn-secondary">Zurück zur Startseite</a>
+            </div>
+        </main>
+    </div>
+
+    <footer class="footer">
+        <span><a href="https://www.alexgaming.dev/impressum" target="_blank">Impressum</a></span>
+        <span>•</span>
+        <span><a href="https://www.alexgaming.dev/datenschutz" target="_blank">Datenschutz</a></span>
+    </footer>
+
+    <script type="module">
+        import { auth, onAuthStateChanged, verifyBeforeUpdateEmail, updatePassword, GoogleAuthProvider, GithubAuthProvider, linkWithPopup, unlink, signOut } from "../js/firebase-init.js";
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                window.location.href = "../login/";
+            } else {
+                document.getElementById('userEmailDisplay').innerText = user.email || 'Keine E-Mail hinterlegt';
+                document.getElementById('verifiedDisplay').innerText = user.emailVerified ? 'Ja (Verifiziert)' : 'Nein (Nicht verifiziert)';
+                
+                const providers = user.providerData.map(p => p.providerId);
+                document.getElementById('primaryProviderDisplay').innerText = providers.join(', ') || 'E-Mail';
+
+                const hasGoogle = providers.includes('google.com');
+                const hasGithub = providers.includes('github.com');
+
+                const gStatus = document.getElementById('googleStatus');
+                const gBtn = document.getElementById('toggleGoogleBtn');
+                if (hasGoogle) {
+                    gStatus.innerText = "Verknüpft";
+                    gStatus.style.color = "green";
+                    gBtn.innerText = "Trennen";
+                    gBtn.className = "btn btn-danger";
+                } else {
+                    gStatus.innerText = "Nicht verknüpft";
+                    gStatus.style.color = "inherit";
+                    gBtn.innerText = "Verknüpfen";
+                    gBtn.className = "btn btn-secondary";
+                }
+
+                const ghStatus = document.getElementById('githubStatus');
+                const ghBtn = document.getElementById('toggleGithubBtn');
+                if (hasGithub) {
+                    ghStatus.innerText = "Verknüpft";
+                    ghStatus.style.color = "green";
+                    ghBtn.innerText = "Trennen";
+                    ghBtn.className = "btn btn-danger";
+                } else {
+                    ghStatus.innerText = "Nicht verknüpft";
+                    ghStatus.style.color = "inherit";
+                    ghBtn.innerText = "Verknüpfen";
+                    ghBtn.className = "btn btn-secondary";
+                }
+            }
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await signOut(auth);
+            window.location.href = "../login/";
+        });
+
+        document.getElementById('toggleGoogleBtn').addEventListener('click', async () => {
+            const user = auth.currentUser;
+            const providers = user.providerData.map(p => p.providerId);
+            try {
+                if (providers.includes('google.com')) {
+                    if (providers.length === 1) return alert("Du kannst nicht deine einzige Anmeldemethode entfernen!");
+                    await unlink(user, 'google.com');
+                    alert("Google-Verknüpfung aufgehoben.");
+                } else {
+                    const provider = new GoogleAuthProvider();
+                    await linkWithPopup(user, provider);
+                    alert("Google erfolgreich verknüpft!");
+                }
+                window.location.reload();
+            } catch (err) {
+                alert("Fehler: " + err.message);
+            }
+        });
+
+        document.getElementById('toggleGithubBtn').addEventListener('click', async () => {
+            const user = auth.currentUser;
+            const providers = user.providerData.map(p => p.providerId);
+            try {
+                if (providers.includes('github.com')) {
+                    if (providers.length === 1) return alert("Du kannst nicht deine einzige Anmeldemethode entfernen!");
+                    await unlink(user, 'github.com');
+                    alert("GitHub-Verknüpfung aufgehoben.");
+                } else {
+                    const provider = new GithubAuthProvider();
+                    await linkWithPopup(user, provider);
+                    alert("GitHub erfolgreich verknüpft!");
+                }
+                window.location.reload();
+            } catch (err) {
+                alert("Fehler: " + err.message);
+            }
+        });
+
+        document.getElementById('updateEmailBtn').addEventListener('click', async () => {
+            const newEmail = document.getElementById('newEmailInput').value.trim();
+            if (!newEmail) return alert("Bitte gib eine gültige neue E-Mail ein.");
+            
+            try {
+                await verifyBeforeUpdateEmail(auth.currentUser, newEmail);
+                alert("Bestätigungs-E-Mail wurde an deine neue Adresse gesendet. Bitte bestätige sie.");
+            } catch (err) {
+                alert("Fehler: " + err.message);
+            }
+        });
+
+        document.getElementById('updatePasswordBtn').addEventListener('click', async () => {
+            const newPassword = document.getElementById('newPasswordInput').value;
+            if (!newPassword || newPassword.length < 6) return alert("Das Passwort muss mindestens 6 Zeichen lang sein.");
+
+            try {
+                await updatePassword(auth.currentUser, newPassword);
+                alert("Passwort erfolgreich aktualisiert!");
+                document.getElementById('newPasswordInput').value = "";
+            } catch (err) {
+                alert("Fehler: " + err.message);
+            }
+        });
+
+        window.handleSearch = () => {
+            const val = document.getElementById('globalSearch').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+            if (val) window.location.href = `../article/?id=${val}`;
+        };
+
+        document.getElementById('globalSearch').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSearch();
+        });
+    </script>
+</body>
+</html>

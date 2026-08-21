@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gurkipedia</title>
+    <title>Gurkistan Wiki</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2316697a'/><polygon points='0,32 0,12 20,32' fill='%23ede134'/><path d='M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z' fill='%23ffffff' opacity='0.9'/><path d='M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z' fill='%23ffffff' opacity='0.75'/></svg>">
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -17,11 +17,14 @@
                 <path d="M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z" fill="#ffffff" opacity="0.9"/>
                 <path d="M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z" fill="#ffffff" opacity="0.75"/>
             </svg>
-            Gurkipedia
+            Gurkistan Wiki
         </a>
         <div class="search-box">
             <input type="text" id="globalSearch" placeholder="Artikel suchen...">
             <button onclick="handleSearch()">Suchen</button>
+        </div>
+        <div class="header-user-area" id="headerUserArea">
+            <a href="./login/" class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.85rem;">Anmelden</a>
         </div>
     </header>
 
@@ -35,7 +38,7 @@
 
         <main class="main-content">
             <h1>Alle Artikel</h1>
-            <p>Willkommen bei Gurkipedia. Hier sind alle aktuell existierenden Artikel:</p>
+            <p>Willkommen bei Gurkistan Wiki. Hier sind alle aktuell existierenden Artikel:</p>
             
             <ul id="articleList" class="article-list">
                 <li>Lade Artikel...</li>
@@ -50,7 +53,24 @@
     </footer>
 
     <script type="module">
-        import { db, collection, getDocs } from "./js/firebase-init.js";
+        import { db, auth, onAuthStateChanged, collection, getDocs, signOut } from "./js/firebase-init.js";
+
+        onAuthStateChanged(auth, (user) => {
+            const userArea = document.getElementById('headerUserArea');
+            if (user) {
+                userArea.innerHTML = `
+                    <span>${user.email || 'Eingeloggt'}</span>
+                    <a href="./account/" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;">Profil</a>
+                    <button id="logoutBtn" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem;">Abmelden</button>
+                `;
+                document.getElementById('logoutBtn').addEventListener('click', async () => {
+                    await signOut(auth);
+                    window.location.reload();
+                });
+            } else {
+                userArea.innerHTML = `<a href="./login/" class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.85rem;">Anmelden</a>`;
+            }
+        });
 
         async function loadArticles() {
             const list = document.getElementById('articleList');
@@ -79,6 +99,11 @@
         };
 
         window.promptNewArticle = () => {
+            if (!auth.currentUser) {
+                alert("Du musst angemeldet sein, um einen neuen Artikel zu erstellen!");
+                window.location.href = "./login/";
+                return;
+            }
             const name = prompt("Name des neuen Artikels:");
             if (name) {
                 const slug = name.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');

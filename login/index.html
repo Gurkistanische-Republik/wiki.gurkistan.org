@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anmelden - Gurkipedia</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2316697a'/><polygon points='0,32 0,12 20,32' fill='%23ede134'/><path d='M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z' fill='%23ffffff' opacity='0.9'/><path d='M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z' fill='%23ffffff' opacity='0.75'/></svg>">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+    <header class="header">
+        <a href="../" class="brand">
+            <svg viewBox="0 0 32 32">
+                <rect width="32" height="32" rx="6" fill="#16697a"/>
+                <polygon points="0,32 0,12 20,32" fill="#ede134"/>
+                <path d="M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z" fill="#ffffff" opacity="0.9"/>
+                <path d="M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z" fill="#ffffff" opacity="0.75"/>
+            </svg>
+            Gurkipedia
+        </a>
+    </header>
+
+    <div class="layout" style="justify-content: center;">
+        <main class="main-content" style="max-width: 450px; width: 100%;">
+            <h1>Anmelden / Registrieren</h1>
+            
+            <div id="authError" style="color: red; margin-bottom: 12px; font-size: 0.9rem;"></div>
+
+            <div style="margin-bottom: 15px;">
+                <label class="form-label" for="emailInput">E-Mail-Adresse</label>
+                <input type="email" id="emailInput" class="form-control" placeholder="name@example.com">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label class="form-label" for="passwordInput">Passwort</label>
+                <input type="password" id="passwordInput" class="form-control" placeholder="Dein Passwort">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button id="loginBtn" class="btn" style="flex: 1; justify-content: center;">Anmelden</button>
+                <button id="registerBtn" class="btn btn-secondary" style="flex: 1; justify-content: center;">Registrieren</button>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 20px;">
+                <a href="#" id="forgotPasswordLink" style="font-size: 0.85rem; color: var(--primary);">Passwort vergessen?</a>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button id="googleLoginBtn" class="btn btn-secondary" style="justify-content: center; background: #fff; color: #333; border: 1px solid var(--border);">
+                    Mit Google anmelden
+                </button>
+                <button id="githubLoginBtn" class="btn btn-secondary" style="justify-content: center; background: #24292e; color: #fff;">
+                    Mit GitHub anmelden
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <footer class="footer">
+        <span><a href="https://www.alexgaming.dev/impressum" target="_blank">Impressum</a></span>
+        <span>•</span>
+        <span><a href="https://www.alexgaming.dev/datenschutz" target="_blank">Datenschutz</a></span>
+    </footer>
+
+    <script type="module">
+        import { 
+            auth, 
+            googleProvider, 
+            githubProvider, 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword, 
+            signInWithPopup, 
+            sendEmailVerification, 
+            sendPasswordResetEmail 
+        } from "../js/firebase-init.js";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectUrl = urlParams.get('redirect') || '../';
+
+        const errorBox = document.getElementById('authError');
+
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            errorBox.innerText = "";
+            const email = document.getElementById('emailInput').value.trim();
+            const password = document.getElementById('passwordInput').value;
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                window.location.href = redirectUrl;
+            } catch (err) {
+                errorBox.innerText = "Fehler beim Anmelden: " + err.message;
+            }
+        });
+
+        document.getElementById('registerBtn').addEventListener('click', async () => {
+            errorBox.innerText = "";
+            const email = document.getElementById('emailInput').value.trim();
+            const password = document.getElementById('passwordInput').value;
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await sendEmailVerification(userCredential.user);
+                alert("Registrierung erfolgreich! Es wurde eine Verifizierungs-E-Mail gesendet.");
+                window.location.href = redirectUrl;
+            } catch (err) {
+                errorBox.innerText = "Fehler bei Registrierung: " + err.message;
+            }
+        });
+
+        document.getElementById('forgotPasswordLink').addEventListener('click', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('emailInput').value.trim();
+            if (!email) {
+                alert("Bitte gib oben deine E-Mail-Adresse ein, um das Passwort zurückzusetzen.");
+                return;
+            }
+            try {
+                await sendPasswordResetEmail(auth, email);
+                alert("Es wurde eine E-Mail zum Zurücksetzen des Passworts gesendet.");
+            } catch (err) {
+                alert("Fehler: " + err.message);
+            }
+        });
+
+        document.getElementById('googleLoginBtn').addEventListener('click', async () => {
+            try {
+                await signInWithPopup(auth, googleProvider);
+                window.location.href = redirectUrl;
+            } catch (err) {
+                errorBox.innerText = "Google Login Fehler: " + err.message;
+            }
+        });
+
+        document.getElementById('githubLoginBtn').addEventListener('click', async () => {
+            try {
+                await signInWithPopup(auth, githubProvider);
+                window.location.href = redirectUrl;
+            } catch (err) {
+                errorBox.innerText = "GitHub Login Fehler: " + err.message;
+            }
+        });
+    </script>
+</body>
+</html>

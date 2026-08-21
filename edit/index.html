@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bearbeiten - Gurkipedia</title>
+    <title>Bearbeiten - Gurkistan Wiki</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2316697a'/><polygon points='0,32 0,12 20,32' fill='%23ede134'/><path d='M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z' fill='%23ffffff' opacity='0.9'/><path d='M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z' fill='%23ffffff' opacity='0.75'/></svg>">
     <link rel="stylesheet" href="../css/style.css">
 </head>
@@ -17,12 +17,13 @@
                 <path d="M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z" fill="#ffffff" opacity="0.9"/>
                 <path d="M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z" fill="#ffffff" opacity="0.75"/>
             </svg>
-            Gurkipedia
+            Gurkistan Wiki
         </a>
         <div class="search-box">
             <input type="text" id="globalSearch" placeholder="Artikel suchen...">
             <button onclick="handleSearch()">Suchen</button>
         </div>
+        <div class="header-user-area" id="headerUserArea"></div>
     </header>
 
     <div class="article-layout">
@@ -37,7 +38,6 @@
             </a>
         </aside>
 
-        <!-- Haupt-Inhalt (Mitte) -->
         <main class="main-content">
             <h1>Artikel bearbeiten</h1>
             
@@ -46,7 +46,7 @@
                 <input type="text" id="editorTitleInput" class="form-control" placeholder="Name des Artikels...">
             </div>
 
-            <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <label class="form-label" for="editorContent" style="margin: 0;">Haupt-Wiki-Inhalt (Markdown unterstützt)</label>
                 <label class="btn btn-secondary" style="cursor: pointer; font-size: 0.85rem; padding: 5px 12px; margin: 0;">
                     <svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
@@ -57,7 +57,6 @@
 
             <textarea id="editorContent" style="height: 280px; width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit; font-size: 1.05rem; line-height: 1.6;" placeholder="Schreibe den Markdown-Text hier hinein..."></textarea>
 
-            <!-- Visuelle Bildervorschau im Editor statt reiner URL -->
             <div style="margin-top: 15px;">
                 <label class="form-label">Im Artikel verwendete Bilder (Vorschau)</label>
                 <div id="editorImageGallery" class="editor-image-preview-container">
@@ -73,7 +72,6 @@
             </div>
         </main>
 
-        <!-- Knowledge Panel Editor (Rechte Spalte) -->
         <aside class="knowledge-panel">
             <h3>Knowledge Panel</h3>
             
@@ -107,23 +105,37 @@
     </footer>
 
     <script type="module">
-        import { db, doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from "../js/firebase-init.js";
+        import { db, auth, onAuthStateChanged, doc, getDoc, setDoc, collection, addDoc, serverTimestamp, signOut } from "../js/firebase-init.js";
 
         const urlParams = new URLSearchParams(window.location.search);
         const articleId = urlParams.get('id');
 
         if(!articleId) window.location.href = "../";
-
         document.getElementById('cancelBtn').href = `../article/?id=${articleId}`;
+
+        onAuthStateChanged(auth, (user) => {
+            const userArea = document.getElementById('headerUserArea');
+            if (!user) {
+                alert("Du musst angemeldet sein, um Artikel bearbeiten zu können!");
+                window.location.href = `../login/?redirect=${encodeURIComponent(window.location.href)}`;
+            } else {
+                userArea.innerHTML = `
+                    <span>${user.email || 'Eingeloggt'}</span>
+                    <a href="../account/" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;">Profil</a>
+                    <button id="logoutBtn" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem;">Abmelden</button>
+                `;
+                document.getElementById('logoutBtn').addEventListener('click', async () => {
+                    await signOut(auth);
+                    window.location.href = "../login/";
+                });
+            }
+        });
 
         let base64Image = "";
 
-        // Funktion zur Aktualisierung der visuellen Bildervorschau im Editor
         function updateEditorImageGallery() {
             const content = document.getElementById('editorContent').value;
             const gallery = document.getElementById('editorImageGallery');
-            
-            // Regex zum Finden von Markdown-Bildern ![alt](url)
             const imgRegex = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/g;
             let matches = [...content.matchAll(imgRegex)];
 
@@ -134,11 +146,9 @@
             }
 
             matches.forEach((match, index) => {
-                const altText = match[1] || `Bild ${index + 1}`;
-                const imgSrc = match[2];
                 gallery.innerHTML += `
-                    <div class="editor-thumb-item" title="${altText}">
-                        <img src="${imgSrc}" alt="${altText}">
+                    <div class="editor-thumb-item" title="${match[1] || `Bild ${index + 1}`}">
+                        <img src="${match[2]}" alt="Vorschau">
                     </div>
                 `;
             });
@@ -146,7 +156,6 @@
 
         document.getElementById('editorContent').addEventListener('input', updateEditorImageGallery);
 
-        // Panel-Bild Upload
         document.getElementById('editorImage').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
@@ -161,7 +170,6 @@
             }
         });
 
-        // Inline Bild in Text-Editor an Cursor-Position einfügen
         document.getElementById('inlineImageInput').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
@@ -170,15 +178,12 @@
                     const base64 = event.target.result;
                     const textarea = document.getElementById('editorContent');
                     const imgMarkdown = `\n![Bild](${base64})\n`;
-                    
                     const start = textarea.selectionStart;
                     const end = textarea.selectionEnd;
-                    const text = textarea.value;
                     
-                    textarea.value = text.substring(0, start) + imgMarkdown + text.substring(end);
+                    textarea.value = textarea.value.substring(0, start) + imgMarkdown + textarea.value.substring(end);
                     textarea.selectionStart = textarea.selectionEnd = start + imgMarkdown.length;
                     textarea.focus();
-                    
                     updateEditorImageGallery();
                 };
                 reader.readAsDataURL(file);
@@ -208,6 +213,10 @@
         }
 
         document.getElementById('saveBtn').addEventListener('click', async () => {
+            if (!auth.currentUser) {
+                alert("Du musst eingeloggt sein, um zu speichern!");
+                return;
+            }
             const content = document.getElementById('editorContent').value.trim();
             const title = document.getElementById('editorTitleInput').value.trim();
             if (!content) return alert("Der Hauptinhalt darf nicht leer sein!");
@@ -216,19 +225,24 @@
             const btn = document.getElementById('saveBtn');
             btn.innerHTML = `Speichert...`;
 
-            const payload = {
-                title: title,
-                definition: document.getElementById('editorDefinition').value.trim(),
-                content: content,
-                sources: document.getElementById('editorSources').value.trim(),
-                links: document.getElementById('editorLinks').value.trim(),
-                imageBase64: base64Image
-            };
+            try {
+                const payload = {
+                    title: title,
+                    definition: document.getElementById('editorDefinition').value.trim(),
+                    content: content,
+                    sources: document.getElementById('editorSources').value.trim(),
+                    links: document.getElementById('editorLinks').value.trim(),
+                    imageBase64: base64Image
+                };
 
-            await setDoc(doc(db, "pages", articleId), payload, { merge: true });
-            await addDoc(collection(db, "pages", articleId, "history"), { content: content, timestamp: serverTimestamp() });
+                await setDoc(doc(db, "pages", articleId), payload, { merge: true });
+                await addDoc(collection(db, "pages", articleId, "history"), { content: content, timestamp: serverTimestamp() });
 
-            window.location.href = `../article/?id=${articleId}`;
+                window.location.href = `../article/?id=${articleId}`;
+            } catch(err) {
+                alert("Fehler beim Speichern. Prüfe deine Berechtigungen.");
+                btn.innerHTML = `Änderungen speichern`;
+            }
         });
 
         window.handleSearch = () => {

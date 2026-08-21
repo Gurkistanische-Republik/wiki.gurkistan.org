@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Gurkistan Wiki</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2316697a'/><polygon points='0,32 0,12 20,32' fill='%23ede134'/><path d='M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z' fill='%23ffffff' opacity='0.9'/><path d='M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z' fill='%23ffffff' opacity='0.75'/></svg>">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+    <header class="header">
+        <a href="../" class="brand">
+            <svg viewBox="0 0 32 32">
+                <rect width="32" height="32" rx="6" fill="#16697a"/>
+                <polygon points="0,32 0,12 20,32" fill="#ede134"/>
+                <path d="M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z" fill="#ffffff" opacity="0.9"/>
+                <path d="M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z" fill="#ffffff" opacity="0.75"/>
+            </svg>
+            Gurkistan Wiki Admin
+        </a>
+    </header>
+
+    <div class="layout" style="justify-content: center;">
+        <main class="main-content" style="max-width: 700px; width: 100%;">
+            <div id="loginSection">
+                <h1>Admin-Anmeldung</h1>
+                <p>Bitte gib das Admin-Passwort ein.</p>
+                <input type="password" id="adminPasswordInput" class="form-control" placeholder="Passwort" style="margin-bottom: 10px;">
+                <button id="adminLoginBtn" class="btn">Anmelden</button>
+            </div>
+
+            <div id="dashboardSection" style="display: none;">
+                <h1>Admin Dashboard</h1>
+                <p>Übersicht aller gemeldeten Artikel:</p>
+                <div id="adminReportsContainer" style="margin-top: 20px;">Lade Daten...</div>
+                <div style="margin-top: 30px;">
+                    <a href="../" class="btn btn-secondary">Zurück zur Startseite</a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <footer class="footer">
+        <span><a href="https://www.alexgaming.dev/impressum" target="_blank">Impressum</a></span>
+        <span>•</span>
+        <span><a href="https://www.alexgaming.dev/datenschutz" target="_blank">Datenschutz</a></span>
+    </footer>
+
+    <script type="module">
+        import { db, collection, getDocs, deleteDoc, doc, updateDoc } from "../js/firebase-init.js";
+
+        document.getElementById('adminLoginBtn').addEventListener('click', () => {
+            const pw = document.getElementById('adminPasswordInput').value;
+            if (pw === "AAaa2211") {
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('dashboardSection').style.display = 'block';
+                loadAdminData();
+            } else {
+                alert("Falsches Passwort!");
+            }
+        });
+
+        async function loadAdminData() {
+            const container = document.getElementById('adminReportsContainer');
+            try {
+                const snapshot = await getDocs(collection(db, "reports"));
+                if (snapshot.empty) {
+                    container.innerHTML = "<i>Keine Einträge vorhanden.</i>";
+                    return;
+                }
+                let html = "";
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const id = docSnap.id;
+
+                    html += `
+                        <div style="border: 1px solid var(--border); padding: 15px; margin-bottom: 10px; border-radius: 6px;">
+                            <p><strong>Artikel-ID:</strong> <a href="../article/?id=${data.articleId}" target="_blank">${data.articleId}</a></p>
+                            <p><strong>Grund:</strong> ${data.reason || 'Keine Angabe'}</p>
+                            <p><strong>Status:</strong> ${data.status || 'Aktiv'}</p>
+                            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                <button onclick="deleteReportItem('${id}')" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem;">Meldung löschen</button>
+                                <button onclick="clearReportStatus('${id}')" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;">Status klären</button>
+                                <button onclick="deleteArticleCompletely('${data.articleId}')" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem;">Artikel komplett löschen</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = "Fehler beim Laden: " + err.message;
+            }
+        }
+
+        window.deleteReportItem = async (id) => {
+            if (confirm("Möchtest du diese Meldung wirklich löschen?")) {
+                await deleteDoc(doc(db, "reports", id));
+                loadAdminData();
+            }
+        };
+
+        window.clearReportStatus = async (id) => {
+            await updateDoc(doc(db, "reports", id), { status: "Entfernt / Geklärt" });
+            loadAdminData();
+        };
+
+        window.deleteArticleCompletely = async (artId) => {
+            if (confirm(`Möchtest du den betroffenen Artikel "${artId}" unwiderruflich löschen?`)) {
+                await deleteDoc(doc(db, "pages", artId));
+                alert("Artikel wurde gelöscht.");
+                loadAdminData();
+            }
+        };
+    </script>
+</body>
+</html>

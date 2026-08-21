@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Artikel - Gurkipedia</title>
+    <title>Artikel - Gurkistan Wiki</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2316697a'/><polygon points='0,32 0,12 20,32' fill='%23ede134'/><path d='M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z' fill='%23ffffff' opacity='0.9'/><path d='M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z' fill='%23ffffff' opacity='0.75'/></svg>">
     <link rel="stylesheet" href="../css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -18,11 +18,14 @@
                 <path d="M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z" fill="#ffffff" opacity="0.9"/>
                 <path d="M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z" fill="#ffffff" opacity="0.75"/>
             </svg>
-            Gurkipedia
+            Gurkistan Wiki
         </a>
         <div class="search-box">
             <input type="text" id="globalSearch" placeholder="Artikel suchen...">
             <button onclick="handleSearch()">Suchen</button>
+        </div>
+        <div class="header-user-area" id="headerUserArea">
+            <a href="../login/" class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.85rem;">Anmelden</a>
         </div>
     </header>
 
@@ -32,9 +35,18 @@
                 <svg class="svg-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 Neuen Artikel erstellen
             </a>
+            <a href="#" id="reportBtn" class="action-link" style="color: #d32f2f; border-color: #ffd2d2;">
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                Artikel melden
+            </a>
         </aside>
 
         <main class="main-content">
+            <div id="reportsContainer" style="display: none; background: #ffebee; border: 1px solid #ffcdd2; padding: 12px; border-radius: 6px; margin-bottom: 20px; color: #c62828;">
+                <strong>Meldung zu diesem Artikel (Ist diese Meldung nachvollziehbar?):</strong>
+                <div id="reportsList" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;"></div>
+            </div>
+
             <h1 id="title">Lade...</h1>
             <div id="content" class="content-box">Inhalt wird geladen...</div>
 
@@ -47,10 +59,6 @@
                     <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     Versionsverlauf
                 </a>
-                <button id="deleteBtn" class="btn btn-danger" style="display:none; margin-left:auto;">
-                    <svg class="svg-icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                    Artikel löschen
-                </button>
             </div>
         </main>
 
@@ -82,7 +90,7 @@
     </footer>
 
     <script type="module">
-        import { db, doc, getDoc, deleteDoc } from "../js/firebase-init.js";
+        import { db, auth, onAuthStateChanged, doc, getDoc, collection, getDocs, query, where, addDoc, signOut } from "../js/firebase-init.js";
 
         const urlParams = new URLSearchParams(window.location.search);
         const articleId = urlParams.get('id') || 'startseite';
@@ -90,83 +98,160 @@
         document.getElementById('editBtn').href = `../edit/?id=${articleId}`;
         document.getElementById('historyBtn').href = `../history/?id=${articleId}`;
 
+        onAuthStateChanged(auth, (user) => {
+            const userArea = document.getElementById('headerUserArea');
+            if (user) {
+                userArea.innerHTML = `
+                    <span style="font-size: 0.85rem; margin-right: 5px;">${user.email || 'Eingeloggt'}</span>
+                    <a href="../account/" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;">Profil</a>
+                    <button id="logoutBtn" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem;">Abmelden</button>
+                `;
+                document.getElementById('logoutBtn').addEventListener('click', async () => {
+                    await signOut(auth);
+                    window.location.reload();
+                });
+            } else {
+                userArea.innerHTML = `<a href="../login/" class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.85rem;">Anmelden</a>`;
+            }
+        });
+
         async function loadArticle() {
-            const snap = await getDoc(doc(db, "pages", articleId));
+            try {
+                const snap = await getDoc(doc(db, "pages", articleId));
 
-            if (snap.exists()) {
-                const data = snap.data();
-                const displayTitle = data.title || articleId;
-                document.getElementById('title').innerText = displayTitle;
-                document.title = `${displayTitle} - Gurkipedia`;
+                if (snap.exists()) {
+                    const data = snap.data();
+                    const displayTitle = data.title || articleId;
+                    document.getElementById('title').innerText = displayTitle;
+                    document.title = `${displayTitle} - Gurkistan Wiki`;
 
-                document.getElementById('content').innerHTML = marked.parse(data.content || "");
-                document.getElementById('deleteBtn').style.display = "inline-flex";
+                    document.getElementById('content').innerHTML = marked.parse(data.content || "");
 
-                let hasPanelContent = false;
-                const kp = document.getElementById('knowledgePanel');
-                document.getElementById('kpTitle').innerText = displayTitle;
+                    let hasPanelContent = false;
+                    const kp = document.getElementById('knowledgePanel');
+                    document.getElementById('kpTitle').innerText = displayTitle;
 
-                if (data.imageBase64) {
-                    document.getElementById('kpImage').src = data.imageBase64;
-                    document.getElementById('kpImage').style.display = "block";
-                    hasPanelContent = true;
-                }
+                    if (data.imageBase64) {
+                        document.getElementById('kpImage').src = data.imageBase64;
+                        document.getElementById('kpImage').style.display = "block";
+                        hasPanelContent = true;
+                    }
 
-                if (data.definition) {
-                    document.getElementById('kpDefinition').innerText = data.definition;
-                    document.getElementById('kpDefinitionSection').style.display = "block";
-                    hasPanelContent = true;
-                }
+                    if (data.definition) {
+                        document.getElementById('kpDefinition').innerText = data.definition;
+                        document.getElementById('kpDefinitionSection').style.display = "block";
+                        hasPanelContent = true;
+                    }
 
-                if (data.sources) {
-                    const sourcesList = document.getElementById('kpSourcesList');
-                    sourcesList.innerHTML = "";
-                    data.sources.split('\n').filter(s => s.trim()).forEach(src => {
-                        const parts = src.split('|');
-                        if (parts.length >= 2) {
-                            const url = parts[0].trim();
-                            const label = parts[1].trim();
-                            sourcesList.innerHTML += `<li><a href="${url}" target="_blank">${label}</a></li>`;
-                        } else {
-                            sourcesList.innerHTML += `<li>${src.trim()}</li>`;
-                        }
-                    });
-                    if(data.sources.trim()) {
+                    if (data.sources) {
+                        const sourcesList = document.getElementById('kpSourcesList');
+                        sourcesList.innerHTML = "";
+                        data.sources.split('\n').filter(s => s.trim()).forEach(src => {
+                            const parts = src.split('|');
+                            if (parts.length >= 2) {
+                                sourcesList.innerHTML += `<li><a href="${parts[0].trim()}" target="_blank">${parts[1].trim()}</a></li>`;
+                            } else {
+                                sourcesList.innerHTML += `<li>${src.trim()}</li>`;
+                            }
+                        });
                         document.getElementById('kpSourcesSection').style.display = "block";
                         hasPanelContent = true;
                     }
-                }
 
-                if (data.links) {
-                    const linksList = document.getElementById('kpLinksList');
-                    linksList.innerHTML = "";
-                    data.links.split('\n').filter(l => l.trim()).forEach(link => {
-                        const parts = link.split('|');
-                        const url = parts[0] ? parts[0].trim() : '#';
-                        const label = parts[1] ? parts[1].trim() : url;
-                        linksList.innerHTML += `<li><a href="${url}" target="_blank">${label}</a></li>`;
-                    });
-                    if(data.links.trim()) {
+                    if (data.links) {
+                        const linksList = document.getElementById('kpLinksList');
+                        linksList.innerHTML = "";
+                        data.links.split('\n').filter(l => l.trim()).forEach(link => {
+                            const parts = link.split('|');
+                            const url = parts[0] ? parts[0].trim() : '#';
+                            const label = parts[1] ? parts[1].trim() : url;
+                            linksList.innerHTML += `<li><a href="${url}" target="_blank">${label}</a></li>`;
+                        });
                         document.getElementById('kpLinksSection').style.display = "block";
                         hasPanelContent = true;
                     }
-                }
 
-                if (hasPanelContent) {
-                    kp.style.display = "block";
-                }
+                    if (hasPanelContent) kp.style.display = "block";
 
-            } else {
-                document.getElementById('title').innerText = articleId;
-                document.getElementById('content').innerHTML = "<i>Dieser Artikel existiert noch nicht. Du kannst ihn über 'Bearbeiten' anlegen!</i>";
+                } else {
+                    document.getElementById('title').innerText = articleId;
+                    document.getElementById('content').innerHTML = "<i>Dieser Artikel existiert noch nicht. Du kannst ihn über 'Bearbeiten' anlegen!</i>";
+                }
+            } catch (err) {
+                document.getElementById('title').innerText = "Fehler";
+                document.getElementById('content').innerHTML = `<i>Artikel konnte nicht geladen werden: ${err.message}</i>`;
             }
         }
 
-        document.getElementById('deleteBtn').addEventListener('click', async () => {
-            if (confirm(`Möchtest du den Artikel "${articleId}" wirklich löschen?`)) {
-                await deleteDoc(doc(db, "pages", articleId));
-                alert("Artikel wurde gelöscht.");
-                window.location.href = "../";
+        async function loadReports() {
+            const container = document.getElementById('reportsContainer');
+            const list = document.getElementById('reportsList');
+            try {
+                const q = query(collection(db, "reports"), where("articleId", "==", articleId));
+                const snapshot = await getDocs(q);
+
+                let html = "";
+                let count = 0;
+                snapshot.forEach(docSnap => {
+                    const d = docSnap.data();
+                    if (d.type === "report") {
+                        count++;
+                        html += `
+                            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.7); padding: 8px 12px; border-radius: 4px; border: 1px solid #ffcdd2;">
+                                <span style="font-weight: 500;">• ${d.reason}</span>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <button onclick="voteReport('${docSnap.id}', 'up')" title="Meldung nachvollziehbar" style="background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center;">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2e7d32" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+                                    </button>
+                                    <button onclick="voteReport('${docSnap.id}', 'down')" title="Meldung nicht nachvollziehbar" style="background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center;">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c62828" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+
+                if (count > 0) {
+                    list.innerHTML = html;
+                    container.style.display = "block";
+                } else {
+                    container.style.display = "none";
+                }
+            } catch (err) {
+                console.error("Fehler beim Laden der Meldungen:", err);
+            }
+        }
+
+        window.voteReport = async (reportId, voteType) => {
+            try {
+                await addDoc(collection(db, "reportFeedback"), {
+                    reportId: reportId,
+                    vote: voteType,
+                    timestamp: Date.now()
+                });
+                alert("Feedback zur Meldung gespeichert!");
+            } catch (err) {
+                alert("Fehler: " + err.message);
+            }
+        };
+
+        document.getElementById('reportBtn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            const reason = prompt(`Grund für die Meldung von "${articleId}":`);
+            if (reason) {
+                try {
+                    await addDoc(collection(db, "reports"), {
+                        articleId: articleId,
+                        type: "report",
+                        reason: reason,
+                        timestamp: Date.now()
+                    });
+                    alert("Vielen Dank! Der Artikel wurde gemeldet.");
+                    loadReports();
+                } catch (err) {
+                    alert("Fehler: " + err.message);
+                }
             }
         });
 
@@ -176,6 +261,11 @@
         };
 
         window.promptNewArticle = () => {
+            if (!auth.currentUser) {
+                alert("Du musst angemeldet sein, um einen neuen Artikel zu erstellen!");
+                window.location.href = "../login/";
+                return;
+            }
             const name = prompt("Name des neuen Artikels:");
             if (name) {
                 const slug = name.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
@@ -188,6 +278,7 @@
         });
 
         loadArticle();
+        loadReports();
     </script>
 </body>
 </html>

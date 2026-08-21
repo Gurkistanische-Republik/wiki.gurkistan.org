@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Versionsverlauf - Gurkipedia</title>
+    <title>Versionsverlauf - Gurkistan Wiki</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2316697a'/><polygon points='0,32 0,12 20,32' fill='%23ede134'/><path d='M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z' fill='%23ffffff' opacity='0.9'/><path d='M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z' fill='%23ffffff' opacity='0.75'/></svg>">
     <link rel="stylesheet" href="../css/style.css">
-    <!-- Marked.js für die Markdown-Darstellung -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         .history-container {
@@ -73,15 +72,16 @@
                 <path d="M8 10c2-1 5-1 8 0v12c-3-1-6-1-8 0V10z" fill="#ffffff" opacity="0.9"/>
                 <path d="M24 10c-2-1-5-1-8 0v12c3-1 6-1 8 0V10z" fill="#ffffff" opacity="0.75"/>
             </svg>
-            Gurkipedia
+            Gurkistan Wiki
         </a>
         <div class="search-box">
             <input type="text" id="globalSearch" placeholder="Artikel suchen...">
             <button onclick="handleSearch()">Suchen</button>
         </div>
+        <div class="header-user-area" id="headerUserArea"></div>
     </header>
 
-    <div class="layout">
+    <div class="article-layout">
         <aside class="sidebar-left">
             <a href="#" onclick="promptNewArticle(); return false;" class="action-link">
                 <svg class="svg-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -114,7 +114,7 @@
     </footer>
 
     <script type="module">
-        import { db, collection, getDocs, query, orderBy } from "../js/firebase-init.js";
+        import { db, auth, onAuthStateChanged, collection, getDocs, query, orderBy, signOut } from "../js/firebase-init.js";
 
         const urlParams = new URLSearchParams(window.location.search);
         const articleId = urlParams.get('id');
@@ -124,45 +124,62 @@
         document.getElementById('histTitle').innerText = articleId;
         document.getElementById('backBtn').href = `../article/?id=${articleId}`;
 
+        onAuthStateChanged(auth, (user) => {
+            const userArea = document.getElementById('headerUserArea');
+            if (user) {
+                userArea.innerHTML = `
+                    <span>${user.email || 'Eingeloggt'}</span>
+                    <a href="../account/" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;">Profil</a>
+                    <button id="logoutBtn" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem;">Abmelden</button>
+                `;
+                document.getElementById('logoutBtn').addEventListener('click', async () => {
+                    await signOut(auth);
+                    window.location.reload();
+                });
+            } else {
+                userArea.innerHTML = `<a href="../login/" class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.85rem;">Anmelden</a>`;
+            }
+        });
+
         async function loadHistory() {
             const list = document.getElementById('historyList');
-            const q = query(collection(db, "pages", articleId, "history"), orderBy("timestamp", "desc"));
-            const snap = await getDocs(q);
+            try {
+                const q = query(collection(db, "pages", articleId, "history"), orderBy("timestamp", "desc"));
+                const snap = await getDocs(q);
 
-            list.innerHTML = "";
-            if (snap.empty) {
-                list.innerHTML = "<p>Keine Versionen vorhanden.</p>";
-                return;
-            }
+                list.innerHTML = "";
+                if (snap.empty) {
+                    list.innerHTML = "<p>Keine Versionen vorhanden.</p>";
+                    return;
+                }
 
-            snap.forEach(docSnap => {
-                const data = docSnap.data();
-                const dateStr = data.timestamp ? data.timestamp.toDate().toLocaleString('de-DE') : "Unbekannt";
-                const snippet = data.content ? data.content.substring(0, 100).replace(/</g, "&lt;") : "";
-                
-                const item = document.createElement('div');
-                item.className = 'history-item';
-                item.innerHTML = `
-                    <div class="history-date"><strong>${dateStr}</strong></div>
-                    <div class="history-preview">${snippet}...</div>
-                `;
-
-                // Beim Klick Markdown parsen und in den Detailbereich rendern
-                item.addEventListener('click', () => {
-                    document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
-                    item.classList.add('active');
-
-                    document.getElementById('detailTitle').innerText = `Version vom ${dateStr}`;
+                snap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const dateStr = data.timestamp ? data.timestamp.toDate().toLocaleString('de-DE') : "Unbekannt";
+                    const snippet = data.content ? data.content.substring(0, 100).replace(/</g, "&lt;") : "";
                     
-                    // Hier wird der Markdown-Text mit marked.parse() in HTML umgewandelt
-                    const rawContent = data.content || "";
-                    document.getElementById('detailContent').innerHTML = marked.parse(rawContent);
-                    
-                    document.getElementById('historyDetail').classList.add('visible');
+                    const item = document.createElement('div');
+                    item.className = 'history-item';
+                    item.innerHTML = `
+                        <div class="history-date"><strong>${dateStr}</strong></div>
+                        <div class="history-preview">${snippet}...</div>
+                    `;
+
+                    item.addEventListener('click', () => {
+                        document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
+                        item.classList.add('active');
+
+                        document.getElementById('detailTitle').innerText = `Version vom ${dateStr}`;
+                        const rawContent = data.content || "";
+                        document.getElementById('detailContent').innerHTML = marked.parse(rawContent);
+                        document.getElementById('historyDetail').classList.add('visible');
+                    });
+
+                    list.appendChild(item);
                 });
-
-                list.appendChild(item);
-            });
+            } catch (err) {
+                list.innerHTML = "<p style='color:red;'>Fehler beim Laden der Historie.</p>";
+            }
         }
 
         window.handleSearch = () => {
